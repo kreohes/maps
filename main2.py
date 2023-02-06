@@ -2,6 +2,10 @@ import os
 import sys
 
 import requests
+from PIL import Image, ImageQt
+from io import BytesIO
+from PyQt5 import QtGui
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 
@@ -11,11 +15,16 @@ SCREEN_SIZE = [600, 450]
 class Map(QWidget):
     def __init__(self):
         super().__init__()
+        self.scale1 = 10
+        self.scale2 = 10
+        self.coords = '37.530887,55.703118'
         self.getImage()
         self.initUI()
 
-    def getImage(self, coords='37.530887,55.703118', scale = '10,10'):
-        map_request = f"http://static-maps.yandex.ru/1.x/?ll={coords}&spn={scale}&l=map"
+    def getImage(self):
+        self.scale = f'{str(self.scale1)},{str(self.scale2)}'
+        print(self.scale)
+        map_request = f"http://static-maps.yandex.ru/1.x/?ll={self.coords}&spn={self.scale}&l=map"
         response = requests.get(map_request)
 
         if not response:
@@ -41,9 +50,35 @@ class Map(QWidget):
     def closeEvent(self, event):
         os.remove(self.map_file)
 
+    def keyPressEvent(self, event):
+        coeff = 0.5
+        if event.key() == Qt.Key_PageUp:
+            if 0 <= self.scale1 < 90 and 0 <= self.scale2 < 90:
+                self.scale1 += coeff
+                self.scale2 += coeff
+                self.getImage()
+        if event.key() == Qt.Key_PageDown:
+            if 0 < self.scale1 <= 90 and 0 < self.scale2 <= 90:
+                self.scale1 -= coeff
+                self.scale2 -= coeff
+                self.getImage()
+        self.update_image()
+
+    def update_image(self):
+        pixmap = QtGui.QPixmap('map.png')
+        if not pixmap.isNull():
+            self.image.setPixmap(pixmap)
+            self.image.adjustSize()
+            self.resize(pixmap.size())
+
+
+def except_hook(cls, exception, traceback):
+    sys.__excepthook__(cls, exception, traceback)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = Map()
-    ex.show()
+    form = Map()
+    form.show()
+    sys.excepthook = except_hook
     sys.exit(app.exec())
